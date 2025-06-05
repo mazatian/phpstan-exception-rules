@@ -10,6 +10,7 @@ use PhpParser\Node\Stmt\TryCatch;
 use PHPStan\Analyser\Scope;
 use PHPStan\Reflection\ReflectionProvider;
 use PHPStan\Rules\Rule;
+use PHPStan\Rules\RuleError;
 use function array_map;
 use function is_a;
 use function sprintf;
@@ -38,7 +39,7 @@ class UnreachableCatchRule implements Rule
 	}
 
 	/**
-	 * @return string[]
+	 * @return RuleError[]
 	 */
 	public function processNode(Node $node, Scope $scope): array
 	{

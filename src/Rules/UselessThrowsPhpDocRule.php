@@ -13,6 +13,8 @@ use PHPStan\Broker\FunctionNotFoundException;
 use PHPStan\Reflection\MissingMethodFromReflectionException;
 use PHPStan\Reflection\ReflectionProvider;
 use PHPStan\Rules\Rule;
+use PHPStan\Rules\RuleError;
+use PHPStan\Rules\RuleErrorBuilder;
 use PHPStan\ShouldNotHappenException;
 use function array_keys;
 use function ltrim;
@@ -50,7 +52,7 @@ class UselessThrowsPhpDocRule implements Rule
 	}
 
 	/**
-	 * @return string[]
+	 * @return RuleError[]
 	 */
 	public function processNode(Node $node, Scope $scope): array
 	{
@@ -62,14 +64,14 @@ class UselessThrowsPhpDocRule implements Rule
 		if ($node instanceof ClassMethod) {
 			$classReflection = $scope->getClassReflection();
 			if ($classReflection === null) {
-				throw new ShouldNotHappenException();
+				return [];
 			}
 
 			$methodName = $node->name->toString();
 			try {
 				$functionReflection = $classReflection->getMethod($methodName, $scope);
 			} catch (MissingMethodFromReflectionException $e) {
-				throw new ShouldNotHappenException();
+				return [RuleErrorBuilder::message($e->getMessage())->build()];
 			}
 
 		} elseif ($node instanceof Function_) {
@@ -77,7 +79,7 @@ class UselessThrowsPhpDocRule implements Rule
 			try {
 				$functionReflection = $this->reflectionProvider->getFunction->getFunction(new Node\Name\FullyQualified($functionName), $scope);
 			} catch (FunctionNotFoundException $e) {
-				throw new ShouldNotHappenException();
+				return [RuleErrorBuilder::message($e->getMessage())->build()];
 			}
 
 		} else {
@@ -88,8 +90,8 @@ class UselessThrowsPhpDocRule implements Rule
 
 		try {
 			return $this->checkUselessThrows($throwsAnnotations);
-		} catch (ClassNotFoundException $exception) {
-			return [];
+		} catch (ClassNotFoundException $e) {
+			return [RuleErrorBuilder::message($e->getMessage())->build()];
 		}
 	}
 

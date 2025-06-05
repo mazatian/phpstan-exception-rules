@@ -9,6 +9,8 @@ use PHPStan\Broker\ClassNotFoundException;
 use PHPStan\Reflection\ClassReflection;
 use PHPStan\Reflection\ReflectionProvider;
 use PHPStan\Rules\Rule;
+use PHPStan\Rules\RuleError;
+use PHPStan\Rules\RuleErrorBuilder;
 use function array_unique;
 use function count;
 use function sprintf;
@@ -33,7 +35,7 @@ class DeadCatchUnionRule implements Rule
 	}
 
 	/**
-	 * @return string[]
+	 * @return RuleError[]
 	 */
 	public function processNode(Node $node, Scope $scope): array
 	{
@@ -63,13 +65,13 @@ class DeadCatchUnionRule implements Rule
 				}
 
 				if ($type === $otherType) {
-					$errors[] = sprintf('Type %s is redundant', $type->getName());
+					$errors[] = RuleErrorBuilder::message(sprintf('Type %s is redundant', $type->getName()))->build();
 
 					continue 2;
 				}
 
 				if ($type->isSubclassOf($otherType->getName())) {
-					$errors[] = sprintf('Type %s is already caught by %s', $type->getName(), $otherType->getName());
+					$errors[] = RuleErrorBuilder::message(sprintf('Type %s is already caught by %s', $type->getName(), $otherType->getName()));
 					continue 2;
 				}
 			}

@@ -5,7 +5,6 @@ namespace Pepakriz\PHPStanExceptionRules\Rules;
 use PhpParser\Node\Name;
 use PhpParser\Node\Stmt\TryCatch;
 use PHPStan\Type\Type;
-use PHPStan\Type\TypeUtils;
 use function array_filter;
 use function array_keys;
 use function array_pop;

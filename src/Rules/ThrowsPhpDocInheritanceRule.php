@@ -13,7 +13,8 @@ use PHPStan\Broker\ClassNotFoundException;
 use PHPStan\Reflection\MissingMethodFromReflectionException;
 use PHPStan\Reflection\ReflectionProvider;
 use PHPStan\Rules\Rule;
-use PHPStan\ShouldNotHappenException;
+use PHPStan\Rules\RuleError;
+use PHPStan\Rules\RuleErrorBuilder;
 use PHPStan\Type\FileTypeMapper;
 use PHPStan\Type\ObjectType;
 use PHPStan\Type\Type;
@@ -70,7 +71,7 @@ class ThrowsPhpDocInheritanceRule implements Rule
 	}
 
 	/**
-	 * @return string[]
+	 * @return RuleError[]
 	 */
 	public function processNode(Node $node, Scope $scope): array
 	{
@@ -134,10 +135,7 @@ class ThrowsPhpDocInheritanceRule implements Rule
 			}
 
 			if ($parentThrowType === null || $parentThrowType instanceof VoidType) {
-				$messages[] = sprintf(
-					'PHPDoc tag @throws with type %s is not compatible with parent',
-					$throwType->describe(VerbosityLevel::typeOnly())
-				);
+				$messages[] = RuleErrorBuilder::message(sprintf('PHPDoc tag @throws with type %s is not compatible with parent', $throwType->describe(VerbosityLevel::typeOnly())))->build();
 
 				continue;
 			}
@@ -151,11 +149,7 @@ class ThrowsPhpDocInheritanceRule implements Rule
 				continue;
 			}
 
-			$messages[] = sprintf(
-				'PHPDoc tag @throws with type %s is not compatible with parent %s',
-				$throwType->describe(VerbosityLevel::typeOnly()),
-				$parentThrowType->describe(VerbosityLevel::typeOnly())
-			);
+			$messages[] = RuleErrorBuilder::message(sprintf('PHPDoc tag @throws with type %s is not compatible with parent %s', $throwType->describe(VerbosityLevel::typeOnly()), $parentThrowType->describe(VerbosityLevel::typeOnly())))->build();
 		}
 
 		return $messages;
