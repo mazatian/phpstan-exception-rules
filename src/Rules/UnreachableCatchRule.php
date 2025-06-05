@@ -75,7 +75,7 @@ class UnreachableCatchRule implements Rule
 		}
 
 		if ($node instanceof Catch_ && $node->hasAttribute(self::UNREACHABLE_CATCH_NODE_ATTRIBUTE)) {
-			return [$node->getAttribute(self::UNREACHABLE_CATCH_NODE_ATTRIBUTE)];
+			return [];
 		}
 
 		return [];
