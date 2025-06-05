@@ -122,7 +122,7 @@ class ThrowsScope
 		}
 
 		if ($this->throwsAnnotationBlockStack[$this->stackIndex] !== null) {
-			$throwsExceptionClasses = TypeUtils::getDirectClassNames($this->throwsAnnotationBlockStack[$this->stackIndex]);
+			$throwsExceptionClasses = $this->extractDirectClassNames($this->throwsAnnotationBlockStack[$this->stackIndex]);
 			foreach ($throwsExceptionClasses as $throwsExceptionClass) {
 				if (is_a($exceptionClassName, $throwsExceptionClass, true)) {
 					$this->usedThrowsAnnotationsStack[$this->stackIndex][$throwsExceptionClass] = true;
@@ -132,6 +132,17 @@ class ThrowsScope
 		}
 
 		return false;
+	}
+
+	private function extractDirectClassNames(Type $type): array
+	{
+		$classNames = [];
+
+		foreach ($type->getObjectClassNames() as $name) {
+			$classNames[] = $name;
+		}
+
+		return $classNames;
 	}
 
 }
