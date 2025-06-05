@@ -8,7 +8,7 @@ use PhpParser\Node\Stmt;
 use PhpParser\Node\Stmt\Catch_;
 use PhpParser\Node\Stmt\TryCatch;
 use PHPStan\Analyser\Scope;
-use PHPStan\Broker\Broker;
+use PHPStan\Reflection\ReflectionProvider;
 use PHPStan\Rules\Rule;
 use function array_map;
 use function is_a;
@@ -23,13 +23,13 @@ class UnreachableCatchRule implements Rule
 	private const UNREACHABLE_CATCH_NODE_ATTRIBUTE = '__UNREACHABLE_CATCH_NODE_ATTRIBUTE__';
 
 	/**
-	 * @var Broker
+	 * @var ReflectionProvider
 	 */
-	private $broker;
+	private $reflectionProvider;
 
-	public function __construct(Broker $broker)
+	public function __construct(ReflectionProvider $reflectionProvider)
 	{
-		$this->broker = $broker;
+		$this->reflectionProvider = $reflectionProvider;
 	}
 
 	public function getNodeType(): string
@@ -51,7 +51,7 @@ class UnreachableCatchRule implements Rule
 				}, $catch->types);
 
 				foreach ($catchClasses as $catchClass) {
-					if (!$this->broker->hasClass($catchClass)) {
+					if (!$this->reflectionProvider->hasClass($catchClass)) {
 						continue;
 					}
 

@@ -5,9 +5,9 @@ namespace Pepakriz\PHPStanExceptionRules\Rules;
 use PhpParser\Node;
 use PhpParser\Node\Stmt\Catch_;
 use PHPStan\Analyser\Scope;
-use PHPStan\Broker\Broker;
 use PHPStan\Broker\ClassNotFoundException;
 use PHPStan\Reflection\ClassReflection;
+use PHPStan\Reflection\ReflectionProvider;
 use PHPStan\Rules\Rule;
 use function array_unique;
 use function count;
@@ -19,12 +19,12 @@ use function sprintf;
 class DeadCatchUnionRule implements Rule
 {
 
-	/** @var Broker */
-	private $broker;
+	/** @var ReflectionProvider */
+	private $reflectionProvider;
 
-	public function __construct(Broker $broker)
+	public function __construct(ReflectionProvider $reflectionProvider)
 	{
-		$this->broker = $broker;
+		$this->reflectionProvider = $reflectionProvider;
 	}
 
 	public function getNodeType(): string
@@ -48,7 +48,7 @@ class DeadCatchUnionRule implements Rule
 		$types = [];
 		foreach ($node->types as $type) {
 			try {
-				$types[] = $this->broker->getClass($type->toString());
+				$types[] = $this->reflectionProvider->getClass($type->toString());
 			} catch (ClassNotFoundException $exception) {
 				// ignore, already spotted by built-in rules
 			}

@@ -19,16 +19,15 @@ use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Expr\New_;
 use PhpParser\Node\Expr\StaticCall;
+use PhpParser\Node\Expr\Throw_;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
 use PhpParser\Node\Stmt\Catch_;
 use PhpParser\Node\Stmt\ClassLike;
 use PhpParser\Node\Stmt\ClassMethod;
 use PhpParser\Node\Stmt\Foreach_;
-use PhpParser\Node\Stmt\Throw_;
 use PhpParser\Node\Stmt\TryCatch;
 use PHPStan\Analyser\Scope;
-use PHPStan\Broker\Broker;
 use PHPStan\Broker\ClassNotFoundException;
 use PHPStan\Broker\FunctionNotFoundException;
 use PHPStan\Node\FunctionReturnStatementsNode;
@@ -36,6 +35,7 @@ use PHPStan\Node\MethodReturnStatementsNode;
 use PHPStan\Node\UnreachableStatementNode;
 use PHPStan\Reflection\MethodReflection;
 use PHPStan\Reflection\MissingMethodFromReflectionException;
+use PHPStan\Reflection\ReflectionProvider;
 use PHPStan\Rules\Rule;
 use PHPStan\Rules\RuleError;
 use PHPStan\Rules\RuleErrorBuilder;
@@ -93,9 +93,9 @@ class ThrowsPhpDocRule implements Rule
 	private $throwsAnnotationReader;
 
 	/**
-	 * @var Broker
+	 * @var ReflectionProvider
 	 */
-	private $broker;
+	private $reflectionProvider;
 
 	/**
 	 * @var ThrowsScope
@@ -128,7 +128,7 @@ class ThrowsPhpDocRule implements Rule
 		DynamicThrowTypeService $dynamicThrowTypeService,
 		DefaultThrowTypeService $defaultThrowTypeService,
 		ThrowsAnnotationReader $throwsAnnotationReader,
-		Broker $broker,
+		ReflectionProvider $reflectionProvider,
 		bool $reportUnusedCatchesOfUncheckedExceptions,
 		bool $reportUnusedCheckedThrowsInSubtypes,
 		bool $reportCheckedThrowsInGlobalScope,
@@ -139,7 +139,7 @@ class ThrowsPhpDocRule implements Rule
 		$this->dynamicThrowTypeService = $dynamicThrowTypeService;
 		$this->defaultThrowTypeService = $defaultThrowTypeService;
 		$this->throwsAnnotationReader = $throwsAnnotationReader;
-		$this->broker = $broker;
+		$this->reflectionProvider = $reflectionProvider;
 		$this->throwsScope = new ThrowsScope();
 		$this->reportUnusedCatchesOfUncheckedExceptions = $reportUnusedCatchesOfUncheckedExceptions;
 		$this->reportCheckedThrowsInGlobalScope = $reportCheckedThrowsInGlobalScope;
@@ -189,10 +189,6 @@ class ThrowsPhpDocRule implements Rule
 
 		if ($node instanceof TryCatchTryEnd) {
 			return $this->processTryCatchTryEnd();
-		}
-
-		if ($node instanceof Throw_) {
-			return $this->processThrow($node, $scope);
 		}
 
 		if ($node instanceof Expr\Throw_) {
@@ -263,8 +259,19 @@ class ThrowsPhpDocRule implements Rule
 					->line($startLine)
 					->build();
 			},
-			TypeUtils::getDirectClassNames($throwType)
+			$this->extractDirectClassNames($throwType)
 		);
+	}
+
+	private function extractDirectClassNames(Type $type): array
+	{
+		$classNames = [];
+
+		foreach ($type->getObjectClassNames() as $name) {
+			$classNames[] = $name;
+		}
+
+		return $classNames;
 	}
 
 	private function isWhitelistedMethod(MethodReflection $methodReflection): bool
@@ -312,16 +319,6 @@ class ThrowsPhpDocRule implements Rule
 	/**
 	 * @return RuleError[]
 	 */
-	private function processThrow(Throw_ $node, Scope $scope): array
-	{
-		$exceptionType = $scope->getType($node->expr);
-
-		return $this->processThrowsTypes($exceptionType);
-	}
-
-	/**
-	 * @return RuleError[]
-	 */
 	private function processExprThrow(Expr\Throw_ $node, Scope $scope): array
 	{
 		$exceptionType = $scope->getType($node->expr);
@@ -340,12 +337,12 @@ class ThrowsPhpDocRule implements Rule
 		}
 
 		$targetType = $scope->getType($node->var);
-		$targetClassNames = TypeUtils::getDirectClassNames($targetType);
+		$targetClassNames = $this->extractDirectClassNames($targetType);
 
 		$throwTypes = [];
 		foreach ($targetClassNames as $targetClassName) {
 			try {
-				$targetClassReflection = $this->broker->getClass($targetClassName);
+				$targetClassReflection = $this->reflectionProvider->getClass($targetClassName);
 			} catch (ClassNotFoundException $e) {
 				continue;
 			}
@@ -443,10 +440,10 @@ class ThrowsPhpDocRule implements Rule
 		$type = $scope->getType($expr);
 
 		$messages = [];
-		$classNames = TypeUtils::getDirectClassNames($type);
+		$classNames = $this->extractDirectClassNames($type);
 		foreach ($classNames as $className) {
 			try {
-				$classReflection = $this->broker->getClass($className);
+				$classReflection = $this->reflectionProvider->getClass($className);
 			} catch (ClassNotFoundException $e) {
 				continue;
 			}
@@ -488,7 +485,7 @@ class ThrowsPhpDocRule implements Rule
 
 		if ($classReflection === null) {
 			try {
-				$methodReflection = $this->broker->getFunction(new Name($node->name->toString()), $scope);
+				$methodReflection = $this->reflectionProvider->getFunction->getFunction(new Name($node->name->toString()), $scope);
 			} catch (FunctionNotFoundException $e) {
 				return [];
 			}
@@ -543,7 +540,7 @@ class ThrowsPhpDocRule implements Rule
 			return [];
 		}
 
-		$declaredThrows = TypeUtils::getDirectClassNames($throwType);
+		$declaredThrows = $this->extractDirectClassNames($throwType);
 		$unusedThrows = $this->filterUnusedExceptions($declaredThrows, $usedThrowsAnnotations, $scope);
 
 		$messages = [];
@@ -599,7 +596,7 @@ class ThrowsPhpDocRule implements Rule
 			$defaultThrowsType = new VoidType();
 		}
 
-		$unusedThrows = array_diff($unusedThrows, TypeUtils::getDirectClassNames($defaultThrowsType));
+		$unusedThrows = array_diff($unusedThrows, $this->extractDirectClassNames($defaultThrowsType));
 
 		$throwsAnnotations = $this->throwsAnnotationReader->read($scope);
 
@@ -700,7 +697,7 @@ class ThrowsPhpDocRule implements Rule
 		}
 
 		try {
-			$functionReflection = $this->broker->getFunction($nodeName, $scope);
+			$functionReflection = $this->reflectionProvider->getFunction($nodeName, $scope);
 		} catch (FunctionNotFoundException $e) {
 			return [];
 		}
@@ -723,7 +720,7 @@ class ThrowsPhpDocRule implements Rule
 	private function processDiv(Expr $divisor, Scope $scope): array
 	{
 		$divisorType = $scope->getType($divisor);
-		foreach (TypeUtils::getConstantScalars($divisorType) as $constantScalarType) {
+		foreach ($divisorType->getConstantScalarTypes() as $constantScalarType) {
 			if ($constantScalarType->getValue() === 0) {
 				return $this->processThrowsTypes(new ObjectType(DivisionByZeroError::class));
 			}
@@ -744,7 +741,7 @@ class ThrowsPhpDocRule implements Rule
 	private function processShift(Expr $value, Scope $scope): array
 	{
 		$valueType = $scope->getType($value);
-		foreach (TypeUtils::getConstantScalars($valueType) as $constantScalarType) {
+		foreach ($valueType->getConstantScalarTypes() as $constantScalarType) {
 			if ($constantScalarType->getValue() < 0) {
 				return $this->processThrowsTypes(new ObjectType(ArithmeticError::class));
 			}
@@ -802,7 +799,7 @@ class ThrowsPhpDocRule implements Rule
 	 */
 	private function processThrowsTypes(Type $targetThrowType): array
 	{
-		$targetExceptionClasses = TypeUtils::getDirectClassNames($targetThrowType);
+		$targetExceptionClasses = $this->extractDirectClassNames($targetThrowType);
 		$targetExceptionClasses = $this->throwsScope->filterExceptionsByUncaught($targetExceptionClasses);
 		$targetExceptionClasses = $this->checkedExceptionService->filterCheckedExceptions($targetExceptionClasses);
 
@@ -837,10 +834,10 @@ class ThrowsPhpDocRule implements Rule
 		}
 
 		$methodReflections = [];
-		$classNames = TypeUtils::getDirectClassNames($calledOnType);
+		$classNames = $this->extractDirectClassNames($calledOnType);
 		foreach ($classNames as $className) {
 			try {
-				$classReflection = $this->broker->getClass($className);
+				$classReflection = $this->reflectionProvider->getClass($className);
 			} catch (ClassNotFoundException $e) {
 				continue;
 			}

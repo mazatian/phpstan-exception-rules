@@ -9,16 +9,15 @@ use Pepakriz\PHPStanExceptionRules\UnsupportedFunctionException;
 use PhpParser\Node;
 use PhpParser\Node\Stmt\ClassMethod;
 use PHPStan\Analyser\Scope;
-use PHPStan\Broker\Broker;
 use PHPStan\Broker\ClassNotFoundException;
 use PHPStan\Reflection\MissingMethodFromReflectionException;
+use PHPStan\Reflection\ReflectionProvider;
 use PHPStan\Rules\Rule;
 use PHPStan\ShouldNotHappenException;
 use PHPStan\Type\FileTypeMapper;
 use PHPStan\Type\ObjectType;
 use PHPStan\Type\Type;
 use PHPStan\Type\TypeCombinator;
-use PHPStan\Type\TypeUtils;
 use PHPStan\Type\VerbosityLevel;
 use PHPStan\Type\VoidType;
 use function array_filter;
@@ -48,21 +47,21 @@ class ThrowsPhpDocInheritanceRule implements Rule
 	private $fileTypeMapper;
 
 	/**
-	 * @var Broker
+	 * @var ReflectionProvider
 	 */
-	private $broker;
+	private $reflectionProvider;
 
 	public function __construct(
 		CheckedExceptionService $checkedExceptionService,
 		DefaultThrowTypeService $defaultThrowTypeService,
 		FileTypeMapper $fileTypeMapper,
-		Broker $broker
+		ReflectionProvider $reflectionProvider
 	)
 	{
 		$this->checkedExceptionService = $checkedExceptionService;
 		$this->defaultThrowTypeService = $defaultThrowTypeService;
 		$this->fileTypeMapper = $fileTypeMapper;
-		$this->broker = $broker;
+		$this->reflectionProvider = $reflectionProvider;
 	}
 
 	public function getNodeType(): string
@@ -117,7 +116,7 @@ class ThrowsPhpDocInheritanceRule implements Rule
 		$messages = [];
 		foreach ($parentClasses as $parentClass) {
 			try {
-				$parentClassReflection = $this->broker->getClass($parentClass->getName());
+				$parentClassReflection = $this->reflectionProvider->getClass($parentClass->getName());
 			} catch (ClassNotFoundException $e) {
 				throw new ShouldNotHappenException();
 			}
@@ -164,7 +163,7 @@ class ThrowsPhpDocInheritanceRule implements Rule
 
 	private function filterUnchecked(Type $type): ?Type
 	{
-		$exceptionClasses = TypeUtils::getDirectClassNames($type);
+		$exceptionClasses = $this->extractDirectClassNames($type);
 		$exceptionClasses = $this->checkedExceptionService->filterCheckedExceptions($exceptionClasses);
 
 		if (count($exceptionClasses) === 0) {
@@ -177,6 +176,17 @@ class ThrowsPhpDocInheritanceRule implements Rule
 		}
 
 		return TypeCombinator::union(...$types);
+	}
+
+	private function extractDirectClassNames(Type $type): array
+	{
+		$classNames = [];
+
+		foreach ($type->getObjectClassNames() as $name) {
+			$classNames[] = $name;
+		}
+
+		return $classNames;
 	}
 
 }

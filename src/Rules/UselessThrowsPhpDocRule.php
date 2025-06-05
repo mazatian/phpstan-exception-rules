@@ -8,10 +8,10 @@ use PhpParser\Node\FunctionLike;
 use PhpParser\Node\Stmt\ClassMethod;
 use PhpParser\Node\Stmt\Function_;
 use PHPStan\Analyser\Scope;
-use PHPStan\Broker\Broker;
 use PHPStan\Broker\ClassNotFoundException;
 use PHPStan\Broker\FunctionNotFoundException;
 use PHPStan\Reflection\MissingMethodFromReflectionException;
+use PHPStan\Reflection\ReflectionProvider;
 use PHPStan\Rules\Rule;
 use PHPStan\ShouldNotHappenException;
 use function array_keys;
@@ -26,9 +26,9 @@ class UselessThrowsPhpDocRule implements Rule
 {
 
 	/**
-	 * @var Broker
+	 * @var ReflectionProvider
 	 */
-	private $broker;
+	private $reflectionProvider;
 
 	/**
 	 * @var ThrowsAnnotationReader
@@ -36,11 +36,11 @@ class UselessThrowsPhpDocRule implements Rule
 	private $throwsAnnotationReader;
 
 	public function __construct(
-		Broker $broker,
+		ReflectionProvider $reflectionProvider,
 		ThrowsAnnotationReader $throwsAnnotationReader
 	)
 	{
-		$this->broker = $broker;
+		$this->reflectionProvider = $reflectionProvider;
 		$this->throwsAnnotationReader = $throwsAnnotationReader;
 	}
 
@@ -75,7 +75,7 @@ class UselessThrowsPhpDocRule implements Rule
 		} elseif ($node instanceof Function_) {
 			$functionName = ltrim($scope->getNamespace() . '\\' . $node->name->toString(), '\\');
 			try {
-				$functionReflection = $this->broker->getFunction(new Node\Name\FullyQualified($functionName), $scope);
+				$functionReflection = $this->reflectionProvider->getFunction->getFunction(new Node\Name\FullyQualified($functionName), $scope);
 			} catch (FunctionNotFoundException $e) {
 				throw new ShouldNotHappenException();
 			}
@@ -133,7 +133,7 @@ class UselessThrowsPhpDocRule implements Rule
 	 */
 	private function isSubtypeOfUsefulThrows(string $exceptionClass, array $usefulThrows): bool
 	{
-		$classReflection = $this->broker->getClass($exceptionClass);
+		$classReflection = $this->reflectionProvider->getClass($exceptionClass);
 
 		foreach ($usefulThrows as $usefulThrow) {
 			if ($classReflection->isSubclassOf($usefulThrow)) {
@@ -152,8 +152,8 @@ class UselessThrowsPhpDocRule implements Rule
 	private function sortThrowsAnnotationsHierarchically(array &$throwsAnnotations): void
 	{
 		uksort($throwsAnnotations, function (string $leftClass, string $rightClass): int {
-			$leftReflection = $this->broker->getClass($leftClass);
-			$rightReflection = $this->broker->getClass($rightClass);
+			$leftReflection = $this->reflectionProvider->getClass($leftClass);
+			$rightReflection = $this->reflectionProvider->getClass($rightClass);
 
 			// Ensure canonical class names
 			$leftClass = $leftReflection->getName();
