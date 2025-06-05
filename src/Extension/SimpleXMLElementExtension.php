@@ -44,7 +44,7 @@ class SimpleXMLElementExtension implements DynamicConstructorThrowTypeExtension
 		}
 
 		$valueType = $scope->getType($args[0]->value);
-		foreach (TypeUtils::getConstantStrings($valueType) as $constantString) {
+		foreach ($valueType->getConstantScalarTypes() as $constantString) {
 			try {
 				new SimpleXMLElement($constantString->getValue());
 			} catch (Exception $e) {

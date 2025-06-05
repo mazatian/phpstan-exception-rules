@@ -493,7 +493,7 @@ class ThrowsPhpDocRule implements Rule
 			try {
 				$methodReflection = $classReflection->getMethod($node->name->toString(), $scope);
 			} catch (MissingMethodFromReflectionException $e) {
-				throw new ShouldNotHappenException();
+				return [$e->getMessage()];
 			}
 
 			try {
@@ -501,7 +501,7 @@ class ThrowsPhpDocRule implements Rule
 					$methodReflection->getName()
 				);
 			} catch (ReflectionException $exception) {
-				throw new ShouldNotHappenException();
+				return [$exception->getMessage()];
 			}
 
 			if ($nativeMethodReflection->isAbstract()) {

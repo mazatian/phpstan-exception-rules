@@ -13,7 +13,6 @@ use PHPStan\Type\NeverType;
 use PHPStan\Type\ObjectType;
 use PHPStan\Type\Type;
 use PHPStan\Type\TypeCombinator;
-use PHPStan\Type\TypeUtils;
 use PHPStan\Type\VoidType;
 use const PHP_INT_MAX;
 
@@ -31,7 +30,7 @@ class IntdivExtension implements DynamicFunctionThrowTypeExtension
 
 		$containsMax = false;
 		$valueType = $scope->getType($functionCall->getArgs()[0]->value);
-		foreach (TypeUtils::getConstantScalars($valueType) as $constantScalarType) {
+		foreach ($valueType->getConstantScalarTypes() as $constantScalarType) {
 			if ($constantScalarType->getValue() === PHP_INT_MAX) {
 				$containsMax = true;
 			}
@@ -45,7 +44,7 @@ class IntdivExtension implements DynamicFunctionThrowTypeExtension
 
 		$divisionByZero = false;
 		$divisorType = $scope->getType($functionCall->getArgs()[1]->value);
-		foreach (TypeUtils::getConstantScalars($divisorType) as $constantScalarType) {
+		foreach ($divisorType->getConstantScalarTypes() as $constantScalarType) {
 			if ($constantScalarType->getValue() === 0) {
 				$divisionByZero = true;
 			}

@@ -40,7 +40,7 @@ class JsonEncodeDecodeExtension implements DynamicFunctionThrowTypeExtension
 			}
 
 			$valueType = $scope->getType($functionCall->getArgs()[0]->value);
-			foreach (TypeUtils::getConstantScalars($valueType) as $constantScalarType) {
+			foreach ($valueType->getConstantScalarTypes() as $constantScalarType) {
 				try {
 					json_decode((string) $constantScalarType->getValue(), true, 512, JSON_THROW_ON_ERROR);
 					$valueType = TypeCombinator::remove($valueType, $constantScalarType);
@@ -55,7 +55,7 @@ class JsonEncodeDecodeExtension implements DynamicFunctionThrowTypeExtension
 
 			$exceptionType = new ObjectType(JsonException::class);
 			$optionsType = $scope->getType($functionCall->getArgs()[3]->value);
-			foreach (TypeUtils::getConstantScalars($optionsType) as $constantScalarType) {
+			foreach ($optionsType->getConstantScalarTypes() as $constantScalarType) {
 				if (!$constantScalarType instanceof IntegerType) {
 					continue;
 				}
@@ -88,7 +88,7 @@ class JsonEncodeDecodeExtension implements DynamicFunctionThrowTypeExtension
 			}
 
 			$valueType = $scope->getType($functionCall->getArgs()[0]->value);
-			foreach (TypeUtils::getConstantScalars($valueType) as $constantScalarType) {
+			foreach ($valueType->getConstantScalarTypes() as $constantScalarType) {
 				try {
 					json_encode($constantScalarType->getValue(), JSON_THROW_ON_ERROR);
 					$valueType = TypeCombinator::remove($valueType, $constantScalarType);
@@ -103,7 +103,7 @@ class JsonEncodeDecodeExtension implements DynamicFunctionThrowTypeExtension
 
 			$exceptionType = new ObjectType(JsonException::class);
 			$optionsType = $scope->getType($functionCall->getArgs()[1]->value);
-			foreach (TypeUtils::getConstantScalars($optionsType) as $constantScalarType) {
+			foreach ($optionsType->getConstantScalarTypes() as $constantScalarType) {
 				if (!$constantScalarType instanceof IntegerType) {
 					continue;
 				}

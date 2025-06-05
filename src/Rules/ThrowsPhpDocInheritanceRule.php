@@ -118,7 +118,7 @@ class ThrowsPhpDocInheritanceRule implements Rule
 			try {
 				$parentClassReflection = $this->reflectionProvider->getClass($parentClass->getName());
 			} catch (ClassNotFoundException $e) {
-				throw new ShouldNotHappenException();
+				return [$e->getMessage()];
 			}
 
 			try {

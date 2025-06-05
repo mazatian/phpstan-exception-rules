@@ -47,7 +47,7 @@ class DOMDocumentExtension implements DynamicMethodThrowTypeExtension
 		$valueType = $scope->getType($methodCall->getArgs()[0]->value);
 		$exceptionType = new ObjectType(ErrorException::class);
 
-		foreach (TypeUtils::getConstantStrings($valueType) as $constantString) {
+		foreach ($valueType->getConstantScalarTypes() as $constantString) {
 			if ($constantString->getValue() === '') {
 				return $exceptionType;
 			}

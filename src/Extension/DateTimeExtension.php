@@ -54,7 +54,7 @@ class DateTimeExtension implements DynamicConstructorThrowTypeExtension
 
 		$valueType = TypeCombinator::removeNull($valueType);
 		$exceptionType = new ObjectType(Exception::class);
-		foreach (TypeUtils::getConstantStrings($valueType) as $constantString) {
+		foreach ($exceptionType->getConstantScalarTypes() as $constantString) {
 			try {
 				new DateTime($constantString->getValue());
 			} catch (Exception $e) {
