@@ -1,4 +1,6 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types = 1);
 
 namespace Pepakriz\PHPStanExceptionRules\Extension;
 
@@ -14,10 +16,10 @@ use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitor\CloningVisitor;
 use PhpParser\NodeVisitorAbstract;
 use PHPStan\Analyser\Scope;
-use PHPStan\Broker\Broker;
 use PHPStan\Broker\ClassNotFoundException;
 use PHPStan\Reflection\ClassReflection;
 use PHPStan\Reflection\MethodReflection;
+use PHPStan\Reflection\ReflectionProvider;
 use PHPStan\ShouldNotHappenException;
 use PHPStan\Type\Constant\ConstantStringType;
 use PHPStan\Type\NeverType;
@@ -39,16 +41,13 @@ use function is_a;
 class ReflectionExtension implements DynamicConstructorThrowTypeExtension
 {
 
-	/**
-	 * @var Broker
-	 */
-	private $broker;
+	protected ReflectionProvider $reflectionProvider;
 
 	public function __construct(
-		Broker $broker
+		ReflectionProvider $reflectionProvider
 	)
 	{
-		$this->broker = $broker;
+		$this->reflectionProvider = $reflectionProvider;
 	}
 
 	/**
@@ -88,13 +87,18 @@ class ReflectionExtension implements DynamicConstructorThrowTypeExtension
 	private function resolveReflectionClass(New_ $newNode, Scope $scope): Type
 	{
 		$reflectionExceptionType = new ObjectType(ReflectionException::class);
+
 		if (!isset($newNode->getArgs()[0])) {
 			return $reflectionExceptionType;
 		}
 
 		$valueType = $this->resolveType($newNode->getArgs()[0]->value, $scope);
-		foreach (TypeUtils::getConstantStrings($valueType) as $constantString) {
-			if (!$this->broker->hasClass($constantString->getValue())) {
+
+		// Извлекаем все строки вида class-string, constant-string и т.д.
+		$constantStrings = $valueType->getConstantStrings();
+
+		foreach ($constantStrings as $constantString) {
+			if (!$this->reflectionProvider->hasClass($constantString->getValue())) {
 				return $reflectionExceptionType;
 			}
 
@@ -111,13 +115,19 @@ class ReflectionExtension implements DynamicConstructorThrowTypeExtension
 	private function resolveReflectionFunction(New_ $newNode, Scope $scope): Type
 	{
 		$reflectionExceptionType = new ObjectType(ReflectionException::class);
+
 		if (!isset($newNode->getArgs()[0])) {
 			return $reflectionExceptionType;
 		}
 
 		$valueType = $this->resolveType($newNode->getArgs()[0]->value, $scope);
-		foreach (TypeUtils::getConstantStrings($valueType) as $constantString) {
-			if (!$this->broker->hasFunction(new Name($constantString->getValue()), $scope)) {
+
+		$constantStrings = $valueType->getConstantStrings();
+
+		foreach ($constantStrings as $constantString) {
+			$functionName = new Name($constantString->getValue());
+
+			if (!$this->reflectionProvider->hasFunction($functionName, $scope)) {
 				return $reflectionExceptionType;
 			}
 
@@ -145,32 +155,41 @@ class ReflectionExtension implements DynamicConstructorThrowTypeExtension
 		});
 	}
 
+	/**
+	 * @param callable(ClassReflection, ConstantStringType): bool $existenceChecker
+	 * @throws ShouldNotHappenException
+	 */
 	private function resolveReflectionMethodOrProperty(New_ $newNode, Scope $scope, callable $existenceChecker): Type
 	{
 		$reflectionExceptionType = new ObjectType(ReflectionException::class);
+
 		if (!isset($newNode->getArgs()[1])) {
 			return $reflectionExceptionType;
 		}
 
 		$valueType = $this->resolveType($newNode->getArgs()[0]->value, $scope);
 		$propertyType = $this->resolveType($newNode->getArgs()[1]->value, $scope);
-		foreach (TypeUtils::getConstantStrings($valueType) as $constantString) {
+
+		$valueStrings = $valueType->getConstantStrings();
+		$propertyStrings = $propertyType->getConstantStrings();
+
+		foreach ($valueStrings as $classString) {
 			try {
-				$classReflection = $this->broker->getClass($constantString->getValue());
+				$classReflection = $this->reflectionProvider->getClass($classString->getValue());
 			} catch (ClassNotFoundException $e) {
 				return $reflectionExceptionType;
 			}
 
-			foreach (TypeUtils::getConstantStrings($propertyType) as $constantPropertyString) {
+			foreach ($propertyStrings as $constantPropertyString) {
 				if (!$existenceChecker($classReflection, $constantPropertyString)) {
 					return $reflectionExceptionType;
 				}
 			}
 
-			$valueType = TypeCombinator::remove($valueType, $constantString);
+			$valueType = TypeCombinator::remove($valueType, $classString);
 		}
 
-		foreach (TypeUtils::getConstantStrings($propertyType) as $constantPropertyString) {
+		foreach ($propertyStrings as $constantPropertyString) {
 			$propertyType = TypeCombinator::remove($propertyType, $constantPropertyString);
 		}
 
@@ -188,12 +207,16 @@ class ReflectionExtension implements DynamicConstructorThrowTypeExtension
 	private function resolveReflectionExtension(New_ $newNode, Scope $scope): Type
 	{
 		$reflectionExceptionType = new ObjectType(ReflectionException::class);
+
 		if (!isset($newNode->getArgs()[0])) {
 			return $reflectionExceptionType;
 		}
 
 		$valueType = $this->resolveType($newNode->getArgs()[0]->value, $scope);
-		foreach (TypeUtils::getConstantStrings($valueType) as $constantString) {
+
+		$constantStrings = $valueType->getConstantStrings();
+
+		foreach ($constantStrings as $constantString) {
 			if (!extension_loaded($constantString->getValue())) {
 				return $reflectionExceptionType;
 			}
